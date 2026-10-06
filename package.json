@@ -1,0 +1,33 @@
+{
+  "name": "ksef-outbox-pattern",
+  "version": "1.0.0",
+  "description": "Transactional Outbox Pattern implementation for KSeF invoice processing",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "migrate": "ts-node src/db/migrate.ts",
+    "relay": "ts-node src/relay/outbox-relay.ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.4",
+    "dotenv": "^16.4.5",
+    "ioredis": "^5.4.1",
+    "pg": "^8.11.5",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.5",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.12.12",
+    "@types/pg": "^8.11.6",
+    "@types/uuid": "^9.0.8",
+    "jest": "^29.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
