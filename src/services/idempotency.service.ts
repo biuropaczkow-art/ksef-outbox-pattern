@@ -9,14 +9,14 @@ export const redis = new Redis({
   password: process.env.REDIS_PASSWORD || undefined,
   db: parseInt(process.env.REDIS_DB || '0'),
   maxRetriesPerRequest: 3,
-  retryStrategy: (times) => {
+  retryStrategy: (times: number) => {
     if (times > 3) return null;
     return Math.min(times * 200, 2000);
   },
   lazyConnect: true,
 });
 
-redis.on('error', (err) => {
+redis.on('error', (err: any) => {
   console.error('Redis connection error:', err);
 });
 
