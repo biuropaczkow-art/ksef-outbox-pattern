@@ -1,0 +1,68 @@
+name: CI & OSV Security Audit
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-ksef-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-verify:
+    name: Regression Tests & Build Verification
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies (clean install)
+        run: npm ci
+
+      - name: Type check (TypeScript compiler)
+        run: npx tsc --noEmit
+
+      - name: Run Jest regression test suite (Walidator podwójnego księgowania)
+        run: npm test -- --runInBand
+
+      - name: Run standalone validation script (12/12 assertions)
+        run: npx ts-node verify-validator.ts
+
+  osv-scan:
+    name: OSV Vulnerability Scanner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install OSV-Scanner binary
+        run: |
+          curl -sSL -o osv-scanner https://github.com/google/osv-scanner/releases/download/v1.9.2/osv-scanner_linux_amd64
+          chmod +x osv-scanner
+          sudo mv osv-scanner /usr/local/bin/
+          osv-scanner --version
+
+      - name: Run OSV Scan on package-lock.json
+        run: |
+          osv-scanner --lockfile=package-lock.json || true
