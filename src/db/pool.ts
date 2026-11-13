@@ -60,6 +60,10 @@ export async function closePool(): Promise<void> {
 export interface InvoiceRow {
   id: string;
   invoice_number: string;
+  invoice_type?: string;
+  original_invoice_number?: string | null;
+  original_ksef_number?: string | null;
+  correction_reason?: string | null;
   seller_nip: string;
   buyer_nip: string;
   seller_name: string;

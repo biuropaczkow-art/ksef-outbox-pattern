@@ -6,6 +6,8 @@ import {
   Invoice, 
   InvoiceItemWithAmounts,
   InvoiceCreatedEvent,
+  InvoiceCorrectionCreatedEvent,
+  InvoiceType,
   OutboxEventPayload,
   KsefStatus 
 } from '../types/invoice';
@@ -35,6 +37,10 @@ function mapInvoiceRow(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
   return {
     id: row.id,
     invoiceNumber: row.invoice_number,
+    invoiceType: (row.invoice_type as InvoiceType) || 'VAT',
+    originalInvoiceNumber: row.original_invoice_number || null,
+    originalKsefNumber: row.original_ksef_number || null,
+    correctionReason: row.correction_reason || null,
     sellerNip: row.seller_nip,
     buyerNip: row.buyer_nip,
     sellerName: row.seller_name,
@@ -123,24 +129,51 @@ export class InvoiceService {
 
       // 3. CRITICAL: Write to OUTBOX in the SAME transaction
       // This is the Transactional Outbox Pattern - atomic write of business data + event
-      const eventPayload: InvoiceCreatedEvent = {
-        eventType: 'INVOICE_CREATED',
-        aggregateId: invoiceId,
-        aggregateType: 'INVOICE',
-        payload: {
-          invoiceId,
-          invoiceNumber: input.invoiceNumber,
-          sellerNip: input.sellerNip,
-          buyerNip: input.buyerNip,
-          totalGross,
-          currency: input.currency || 'PLN',
-          issueDate: input.issueDate,
-        },
-        metadata: {
-          source: 'api',
-          correlationId: uuidv4(),
-        },
-      };
+      let eventPayload: OutboxEventPayload;
+      if (input.invoiceType === 'KOR') {
+        eventPayload = {
+          eventType: 'INVOICE_CORRECTION_CREATED',
+          aggregateId: invoiceId,
+          aggregateType: 'INVOICE',
+          payload: {
+            invoiceId,
+            invoiceNumber: input.invoiceNumber,
+            invoiceType: 'KOR',
+            originalInvoiceNumber: input.originalInvoiceNumber || '',
+            originalKsefNumber: input.originalKsefNumber || '',
+            correctionReason: input.correctionReason || 'Korekta pozycji / danych',
+            sellerNip: input.sellerNip,
+            buyerNip: input.buyerNip,
+            totalGross,
+            currency: input.currency || 'PLN',
+            issueDate: input.issueDate,
+          },
+          metadata: {
+            source: 'api',
+            correlationId: uuidv4(),
+          },
+        };
+      } else {
+        eventPayload = {
+          eventType: 'INVOICE_CREATED',
+          aggregateId: invoiceId,
+          aggregateType: 'INVOICE',
+          payload: {
+            invoiceId,
+            invoiceNumber: input.invoiceNumber,
+            invoiceType: input.invoiceType || 'VAT',
+            sellerNip: input.sellerNip,
+            buyerNip: input.buyerNip,
+            totalGross,
+            currency: input.currency || 'PLN',
+            issueDate: input.issueDate,
+          },
+          metadata: {
+            source: 'api',
+            correlationId: uuidv4(),
+          },
+        };
+      }
 
       await client.query(
         `INSERT INTO outbox_events (event_type, aggregate_id, aggregate_type, payload, metadata)

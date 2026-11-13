@@ -7,6 +7,8 @@ export interface InvoiceItem {
   vatRate: number;
 }
 
+export type InvoiceType = 'VAT' | 'KOR' | 'ZAL' | 'ROZ';
+
 export interface CreateInvoiceInput {
   invoiceNumber: string;
   sellerNip: string;
@@ -16,12 +18,20 @@ export interface CreateInvoiceInput {
   issueDate: string; // ISO date string
   saleDate: string; // ISO date string
   currency?: string;
+  invoiceType?: InvoiceType;
+  originalInvoiceNumber?: string;
+  originalKsefNumber?: string;
+  correctionReason?: string;
   items: InvoiceItem[];
 }
 
 export interface Invoice {
   id: string;
   invoiceNumber: string;
+  invoiceType: InvoiceType;
+  originalInvoiceNumber: string | null;
+  originalKsefNumber: string | null;
+  correctionReason: string | null;
   sellerNip: string;
   buyerNip: string;
   sellerName: string;
@@ -64,6 +74,31 @@ export interface InvoiceCreatedEvent {
   payload: {
     invoiceId: string;
     invoiceNumber: string;
+    invoiceType?: InvoiceType;
+    sellerNip: string;
+    buyerNip: string;
+    totalGross: number;
+    currency: string;
+    issueDate: string;
+  };
+  metadata: {
+    source: 'api' | 'batch' | 'recurring';
+    correlationId?: string;
+    causationId?: string;
+  };
+}
+
+export interface InvoiceCorrectionCreatedEvent {
+  eventType: 'INVOICE_CORRECTION_CREATED';
+  aggregateId: string;
+  aggregateType: 'INVOICE';
+  payload: {
+    invoiceId: string;
+    invoiceNumber: string;
+    invoiceType: 'KOR';
+    originalInvoiceNumber: string;
+    originalKsefNumber: string;
+    correctionReason: string;
     sellerNip: string;
     buyerNip: string;
     totalGross: number;
@@ -123,6 +158,7 @@ export interface InvoiceKsefRejectedEvent {
 
 export type OutboxEventPayload = 
   | InvoiceCreatedEvent
+  | InvoiceCorrectionCreatedEvent
   | InvoiceSentToKsefEvent
   | InvoiceKsefAcceptedEvent
   | InvoiceKsefRejectedEvent;

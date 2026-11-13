@@ -30,7 +30,16 @@ export class BookedFileValidator {
   /**
    * Creates a deterministic business key for the invoice: NIP + invoice number + issue date
    */
-  public getBusinessKey(sellerNip: string, invoiceNumber: string, issueDate: string): string {
+  public getBusinessKey(
+    sellerNip: string,
+    invoiceNumber: string,
+    issueDate: string,
+    documentType?: 'INVOICE' | 'CORRECTION',
+    originalRef?: string
+  ): string {
+    if (documentType === 'CORRECTION') {
+      return `${sellerNip.trim()}::KOR::${invoiceNumber.trim()}::${(originalRef || '').trim()}`;
+    }
     return `${sellerNip.trim()}::${invoiceNumber.trim()}::${issueDate.trim()}`;
   }
 
@@ -42,7 +51,19 @@ export class BookedFileValidator {
    */
   public async validateAndBookDocument(input: DocumentInput): Promise<DocumentValidationResult> {
     const fileHash = this.computeFileHash(input.fileContent);
-    const businessKey = this.getBusinessKey(input.sellerNip, input.invoiceNumber, input.issueDate);
+    const isCorrection = input.documentType === 'CORRECTION';
+    const originalRef = input.originalKsefNumber || input.originalInvoiceNumber;
+
+    if (isCorrection && !originalRef) {
+      return {
+        isValid: false,
+        status: 'INVALID_CORRECTION_REFERENCE',
+        fileHash,
+        message: 'Faktura korygująca KSeF FA(3) musi zawierać referencję do korygowanej faktury (numer KSeF lub numer faktury pierwotnej).',
+      };
+    }
+
+    const businessKey = this.getBusinessKey(input.sellerNip, input.invoiceNumber, input.issueDate, input.documentType, originalRef);
     const lockKey = `lock:doc:${fileHash}`;
     const businessLockKey = `lock:biz:${businessKey}`;
     const eventId = uuidv4();
@@ -128,6 +149,10 @@ export class BookedFileValidator {
         totalGross: input.totalGross,
         currency: input.currency || 'PLN',
         bookedAt: new Date(),
+        documentType: input.documentType || 'INVOICE',
+        originalInvoiceNumber: input.originalInvoiceNumber || null,
+        originalKsefNumber: input.originalKsefNumber || null,
+        correctionReason: input.correctionReason || null,
       };
 
       this.bookedHashes.set(fileHash, record);

@@ -7,13 +7,18 @@ export interface DocumentInput {
   issueDate: string; // YYYY-MM-DD
   totalGross: number;
   currency?: string;
+  documentType?: 'INVOICE' | 'CORRECTION';
+  originalInvoiceNumber?: string;
+  originalKsefNumber?: string;
+  correctionReason?: string;
 }
 
 export type DocumentValidationStatus = 
   | 'ACCEPTED' 
   | 'DUPLICATE_FILE' 
   | 'DUPLICATE_INVOICE' 
-  | 'IN_PROCESSING_COLLISION';
+  | 'IN_PROCESSING_COLLISION'
+  | 'INVALID_CORRECTION_REFERENCE';
 
 export interface BookedDocumentRecord {
   id: string;
@@ -26,6 +31,10 @@ export interface BookedDocumentRecord {
   totalGross: number;
   currency: string;
   bookedAt: Date;
+  documentType?: 'INVOICE' | 'CORRECTION';
+  originalInvoiceNumber?: string | null;
+  originalKsefNumber?: string | null;
+  correctionReason?: string | null;
 }
 
 export interface DocumentValidationResult {
